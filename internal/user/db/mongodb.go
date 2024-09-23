@@ -7,6 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"golang.org/x/net/context"
+	"rest-api-practice/internal/apperror"
 	"rest-api-practice/internal/user"
 	"rest-api-practice/pkg/logging"
 )
@@ -44,8 +45,7 @@ func (d *db) FindOne(ctx context.Context, id string) (u user.User, err error) {
 	result := d.collection.FindOne(ctx, filter)
 	if result.Err() != nil {
 		if errors.Is(result.Err(), mongo.ErrNoDocuments) {
-			// TODO ErrEntityNotFound
-			return u, fmt.Errorf("ErrEntityNotFound")
+			return u, apperror.ErrNotFound
 		}
 		return u, fmt.Errorf("failed to find one user by id: %s due to error: %v", id, err)
 	}
@@ -60,14 +60,13 @@ func (d *db) FindOne(ctx context.Context, id string) (u user.User, err error) {
 func (d *db) FindALL(ctx context.Context) (u []user.User, err error) {
 	cursor, err := d.collection.Find(ctx, bson.M{})
 	if cursor.Err() != nil {
-
 		return u, fmt.Errorf("failed to find all users due to error: %v", err)
 	}
 
 	if err = cursor.All(ctx, &u); err != nil {
 		return u, fmt.Errorf("failed to read all documents from cursor. err: %v", err)
 	}
-	
+
 	return u, nil
 }
 
@@ -101,8 +100,7 @@ func (d *db) Update(ctx context.Context, user user.User) error {
 		return fmt.Errorf("failed to execute update user query. error: %v", err)
 	}
 	if result.MatchedCount == 0 {
-		// TODO ErrEntityNotFound
-		return fmt.Errorf("user %s not found", user.ID)
+		return apperror.ErrNotFound
 	}
 
 	d.logger.Tracef("Matched %d documents and Modified %d documents", result.MatchedCount, result.ModifiedCount)
@@ -124,8 +122,7 @@ func (d *db) Delete(ctx context.Context, id string) error {
 	}
 
 	if result.DeletedCount == 0 {
-		// TODO ErrEntityNotFound
-		return fmt.Errorf("not found")
+		return apperror.ErrNotFound
 	}
 
 	d.logger.Tracef("Deleted %d documents ", result.DeletedCount)
